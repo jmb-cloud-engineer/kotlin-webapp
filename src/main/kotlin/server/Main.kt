@@ -8,9 +8,14 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.pipeline.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import server.config.WebAppConfigs
+import server.http.JsonWebResponse
+import server.http.TextWebResponse
+import server.http.WebResponse
+import server.mappers.KtorJsonWebResponse
 import kotlin.reflect.full.declaredMemberProperties
 import kotlin.reflect.full.declaredMembers
 
@@ -42,11 +47,18 @@ fun Application.serverApplication(log: Logger) {
             )
         }
     }
-
+    //Webapp defined routes
     routing {
-        get("/") {
-            call.respondText("Server Responding")
-        }
+
+        get("/", webResponse {
+            TextWebResponse("Hello World!")
+                .header("X-test-header", "test-value")
+        })
+
+        get("/json", webResponse {
+            JsonWebResponse(mapOf("foo" to "bar"))
+                .header("X-test-header", "test-value")
+        })
     }
 }
 
@@ -65,11 +77,46 @@ private fun createWebAppConfig(env: String) = ConfigFactory
         )
     }
 
+//Custom extension function to return the response types defined
+//in the WebResponse interface. It extends ktor route.get() function.
+fun webResponse(
+    handler: suspend PipelineContext<Unit, ApplicationCall>.(
+    ) -> WebResponse
+): PipelineInterceptor<Unit, ApplicationCall> {
+    return {
+        val resp = this.handler()
+        for ((name, values) in resp.headers())
+            for (value in values)
+                call.response.header(name, value)
+        val statusCode = HttpStatusCode.fromValue(
+            resp.statusCode
+        )
+        when (resp) {
+            is TextWebResponse -> {
+                call.respondText(
+                    text = resp.body,
+                    status = statusCode
+                )
+            }
+
+            is JsonWebResponse -> {
+                call.respond(
+                    KtorJsonWebResponse(
+                        body = resp.body,
+                        status = statusCode
+                    )
+                )
+            }
+        }
+    }
+}
+
 //Logs properties of the WebAppConfigs object, masks the sensitive ones.
 private fun logProperties(webAppConfig: WebAppConfigs) {
     val secretsRegex = "password|secret|key"
         .toRegex(RegexOption.IGNORE_CASE)
 
+    //Exemplifying Kotlin's metaprogramming capabilities (Java reflection)
     val propertiesString = WebAppConfigs::class.declaredMemberProperties
         .sortedBy { it.name }
         .map {
