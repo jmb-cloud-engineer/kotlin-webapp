@@ -5,10 +5,11 @@ sealed class WebResponse {
     abstract val headers: Map<String, List<String>>
     abstract fun copyResponse(
         statusCode: Int,
-        headers: Map<String, List<String>>) : WebResponse
+        headers: Map<String, List<String>>
+    ): WebResponse
 
-    //Function makes headers lower case and puts into list to allow for
-    //duplicate headers
+    // Function makes headers lower case and puts into list to allow for
+    // duplicate headers
     fun headers(): Map<String, List<String>> =
         headers.map { it.key.lowercase() to it.value }
             .fold(mapOf()) { acc, (k, v) ->
@@ -23,34 +24,37 @@ sealed class WebResponse {
     fun header(headerName: String, headerValue: String) =
         header(headerName, listOf(headerValue))
 
-    //Overloading of previous function, also, uses a Builder pattern
-    //to allow for the chaining of multiple calls to header()
-    //in a single statement.
-    //This is a common pattern in Kotlin.
-    //https://kotlinlang.org/docs/reference/type-safe-builders.html#overloading-a-function-with-a-builder-pattern
-    //https://kotlinlang.org/docs/reference/type-safe-builders.html#chaining-multiple-calls-to-a-function-with-a-builder-pattern
-    //https://kotlinlang.org/docs/reference/type-safe-builders.html#overloading-a-function-with-a-builder-pattern-and-chaining-multiple-calls-to-a-function-with-a-builder-pattern
+    // Overloading of previous function, also, uses a Builder pattern
+    // to allow for the chaining of multiple calls to header()
+    // in a single statement.
+    // This is a common pattern in Kotlin.
+    // https://kotlinlang.org/docs/reference/type-safe-builders.html#overloading-a-function-with-a-builder-pattern
+    // https://kotlinlang.org/docs/reference/type-safe-builders.html#chaining-multiple-calls-to-a-function-with-a-builder-pattern
+    // https://kotlinlang.org/docs/reference/type-safe-builders.html#overloading-a-function-with-a-builder-pattern-and-chaining-multiple-calls-to-a-function-with-a-builder-pattern
     fun header(headerName: String, headerValue: List<String>) =
         copyResponse(
             statusCode,
-            headers.plus(Pair(
-                headerName,
-                headers.getOrDefault(headerName, listOf())
-                    .plus(headerValue)
-            ))
+            headers.plus(
+                Pair(
+                    headerName,
+                    headers.getOrDefault(headerName, listOf())
+                        .plus(headerValue)
+                )
+            )
         )
 }
 
-//Data class inherits properties from the "sealed" (abstract) class
+// Data class inherits properties from the "sealed" (abstract) class
 data class TextWebResponse(
     val body: String,
     override val statusCode: Int = 200,
-    override val headers: Map<String, List<String>> = mapOf(),
+    override val headers: Map<String, List<String>> = mapOf()
 ) : WebResponse() {
     override fun copyResponse(
         statusCode: Int,
-        headers: Map<String, List<String>>)
-    = copy(body = body, statusCode = statusCode, headers = headers)
+        headers: Map<String, List<String>>
+    ) =
+        copy(body = body, statusCode = statusCode, headers = headers)
 }
 
 data class JsonWebResponse(
@@ -60,6 +64,7 @@ data class JsonWebResponse(
 ) : WebResponse() {
     override fun copyResponse(
         statusCode: Int,
-        headers: Map<String, List<String>>)
-            = copy(body = body, statusCode = statusCode, headers = headers)
+        headers: Map<String, List<String>>
+    ) =
+        copy(body = body, statusCode = statusCode, headers = headers)
 }

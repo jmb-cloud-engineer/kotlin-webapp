@@ -8,4 +8,5 @@ data class WebAppConfigs(
     val httpPort: Int,
     val dbUserName: String? = null,
     val dbPassword: String? = null,
+    val dbUrl: String? = null
 )
