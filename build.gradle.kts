@@ -31,6 +31,7 @@ dependencies {
     // DB Dependencies
     implementation("com.zaxxer:HikariCP:5.0.1")
     implementation("com.h2database:h2:2.1.214")
+    implementation("com.github.seratch:kotliquery:1.9.0")
     // DB Migration dependencies
     implementation("org.flywaydb:flyway-core:9.5.1")
     // Testing Dependencies

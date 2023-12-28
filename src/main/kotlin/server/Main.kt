@@ -14,9 +14,11 @@ import org.flywaydb.core.Flyway
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import server.config.WebAppConfigs
+import server.config.WebAppConfigurer
 import server.http.JsonWebResponse
 import server.http.TextWebResponse
 import server.http.WebResponse
+import server.mappers.DbMapper
 import server.mappers.KtorJsonWebResponse
 import javax.sql.DataSource
 import kotlin.reflect.full.declaredMemberProperties
@@ -28,8 +30,7 @@ fun main(args: Array<String>) {
     val env = System.getenv("SERVER_ENV") ?: "local"
     log.info("Running in $env environment")
 
-    val webAppConfig = createWebAppConfig(env)
-    logProperties(webAppConfig)
+    val webAppConfig = WebAppConfigurer.createWebAppConfig(env)
     // Create the DB Connection and trigger DB Migrations (if any)
     val dataSource = createAndMigrateDatasource(webAppConfig)
 
@@ -76,30 +77,12 @@ fun Application.serverApplication(log: Logger, dataSource: DataSource) {
         get(
             "/health",
             webResponse {
-                TextWebResponse(healthCheck(dataSource))
+                TextWebResponse(dbMapperHealthCheck(dataSource))
                     .header("X-test-header", "test-value")
             }
         )
     }
 }
-
-// Kotlin's single 'expression function' syntax allows us to omit the curly braces
-// and the return type declaration.
-private fun createWebAppConfig(env: String) = ConfigFactory
-    .parseResources("app-$env.conf")
-    .withFallback(ConfigFactory.parseResources("app.conf"))
-    .resolve()
-    .let {
-        // let receives the value of the lambda expression as the parameter and
-        // returns the value of the lambda expression.
-        // value is a Config! object from resolve() call
-        WebAppConfigs(
-            httpPort = it.getInt("httpPort"),
-            dbUserName = it.getString("dbUserName"),
-            dbPassword = it.getString("dbPassword"),
-            dbUrl = it.getString("dbUrl")
-        )
-    }
 
 // Custom extension function to return the response types defined
 // in the WebResponse interface. It extends ktor route.get() function.
@@ -134,26 +117,6 @@ private fun webResponse(
     }
 }
 
-// Logs properties of the WebAppConfigs object, masks the sensitive ones.
-private fun logProperties(webAppConfig: WebAppConfigs) {
-    val secretsRegex = "password|secret|key"
-        .toRegex(RegexOption.IGNORE_CASE)
-
-    // Exemplifying Kotlin's metaprogramming capabilities (Java reflection)
-    val propertiesString = WebAppConfigs::class.declaredMemberProperties
-        .sortedBy { it.name }
-        .map {
-            if (secretsRegex.containsMatchIn(it.name)) {
-                "${it.name}: ******"
-            } else {
-                "${it.name}: ${it.get(webAppConfig)}"
-            }
-        }
-        .joinToString("\n")
-
-    log.info("Loaded properties: $propertiesString")
-}
-
 private fun createAndMigrateDatasource(configs: WebAppConfigs): DataSource {
     val dataSource = createDatasource(configs).also {
         migrateDataSource(it)
@@ -186,4 +149,18 @@ private fun healthCheck(dataSource: DataSource): String {
         }
     }
     return "DATABASE STATUS: OK"
+}
+
+private fun dbMapperHealthCheck(dataSource: DataSource): String {
+    val queryResult = DbMapper.run {
+        executeSingleRowResultQuery(dataSource, "SELECT 1")
+    }
+
+    val statusFailed = queryResult?.isEmpty() ?: true
+
+    return if (statusFailed) {
+        "DATABASE STATUS: FAILED"
+    } else {
+        "DATABASE STATUS: OK"
+    }
 }
