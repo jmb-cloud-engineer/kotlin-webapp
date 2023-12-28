@@ -5,7 +5,7 @@ import kotliquery.queryOf
 import kotliquery.sessionOf
 import javax.sql.DataSource
 
-//Object modifier makes it a singleton, static, type of class.
+//Object makes it a singleton, static, type of class.
 object DbMapper {
 
     /**
@@ -24,7 +24,8 @@ object DbMapper {
     }
 
     //::mapFromRow is a function reference
-    //use will invoke .close() on the session through kotlin query library
+    //'use' will invoke .close() on the session through kotlin query library
+    //as sessionOf implements java 'closeable' interface wich needs manual closing
     fun executeSingleRowResultQuery(
         dataSource: DataSource,
         query: String): Map<String, Any?>? {
