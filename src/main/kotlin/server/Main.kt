@@ -1,7 +1,5 @@
 package server
 
-import com.typesafe.config.ConfigFactory
-import com.zaxxer.hikari.HikariDataSource
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -10,20 +8,15 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.util.pipeline.*
-import org.flywaydb.core.Flyway
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import server.config.DatasourceConfigurer
-import server.config.WebAppConfigs
 import server.config.WebAppConfigurer
 import server.http.JsonWebResponse
 import server.http.TextWebResponse
 import server.http.WebResponse
-import server.mappers.DbMapper
 import server.mappers.KtorJsonWebResponse
 import server.persistence.DBClient
-import javax.sql.DataSource
-import kotlin.reflect.full.declaredMemberProperties
 
 private val log = LoggerFactory.getLogger("server.Main")
 
@@ -35,7 +28,7 @@ fun main(args: Array<String>) {
     val webAppConfig = WebAppConfigurer.createWebAppConfig(env)
     // Create the DB Connection and trigger DB Migrations (if any)
     val dataSource = DatasourceConfigurer.getInstance(webAppConfig).dataSource
-    //TODO: This can be moved to a service if a layered approach is followed
+    // TODO: This can be moved to a service if a layered approach is followed
     val dbClient = DBClient(dataSource)
 
     // embeddedServer is a function that takes a Netty engine and a port number
@@ -119,13 +112,4 @@ private fun webResponse(
             }
         }
     }
-}
-
-private fun healthCheck(dataSource: DataSource): String {
-    dataSource.connection.use { conn ->
-        conn.createStatement().use { stmt ->
-            stmt.executeQuery("SELECT 1")
-        }
-    }
-    return "DATABASE STATUS: OK"
 }

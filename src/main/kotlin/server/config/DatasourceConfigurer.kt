@@ -2,7 +2,6 @@ package server.config
 
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
-import server.mappers.DbMapper
 import javax.sql.DataSource
 
 private const val MIGRATION_PATH = "db/migration"
@@ -17,9 +16,9 @@ private const val FLYWAY_HISTORY_TABLE = "flyway_schema_history"
  * an interface could be used and DI could be leveraged (i.e: SqlDatasourceConfigurer
  * and NoSQLDatasourceConfigurer)
  */
-class DatasourceConfigurer private constructor(webAppConfigs: WebAppConfigs){
+class DatasourceConfigurer private constructor(webAppConfigs: WebAppConfigs) {
 
-    //Created when instance is created
+    // Created when instance is created
     val dataSource: DataSource = createAndMigrateDatasource(webAppConfigs)
 
     /**
@@ -30,8 +29,8 @@ class DatasourceConfigurer private constructor(webAppConfigs: WebAppConfigs){
         private var INSTANCE: DatasourceConfigurer? = null
 
         fun getInstance(webAppConfigs: WebAppConfigs?): DatasourceConfigurer {
-            webAppConfigs ?:
-                throw IllegalArgumentException("Configurations cannot be null for creating a Datasource")
+            webAppConfigs
+                ?: throw IllegalArgumentException("Configurations cannot be null for creating a Datasource")
 
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: DatasourceConfigurer(webAppConfigs).also {

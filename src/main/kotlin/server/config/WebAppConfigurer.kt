@@ -4,7 +4,14 @@ import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import kotlin.reflect.full.declaredMemberProperties
 
-//Object in Kotlin rather than a class, it acts as an util-static type of object.
+/**
+ *  Class primary purpose is to load and configure application settings from external configuration files.
+ *  It provides a centralized way to manage application configurations such as server port, database
+ *  credentials, and other necessary settings. This approach helps in maintaining a clear separation
+ *  between the code and configuration, enhancing security and making the application easier to
+ *  configure across different environments.
+ */
+// Object in Kotlin rather than a class, it acts as an util-static type of object.
 object WebAppConfigurer {
 
     private val log = LoggerFactory.getLogger("server.WebConfigurer")
