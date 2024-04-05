@@ -13,6 +13,7 @@ import io.ktor.util.pipeline.*
 import org.flywaydb.core.Flyway
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import server.config.DataSourceManager
 import server.config.WebAppConfigs
 import server.http.JsonWebResponse
 import server.http.TextWebResponse
@@ -30,13 +31,15 @@ fun main(args: Array<String>) {
 
     val webAppConfig = createWebAppConfig(env)
     logProperties(webAppConfig)
+
     // Create the DB Connection and trigger DB Migrations (if any)
-    val dataSource = createAndMigrateDatasource(webAppConfig)
+    val dataSourceManager = DataSourceManager(webAppConfig)
+    dataSourceManager.initializeDataSource()
 
     // embeddedServer is a function that takes a Netty engine and a port number
     // and starts the server.
     embeddedServer(Netty, port = webAppConfig.httpPort) {
-        serverApplication(log, dataSource)
+        serverApplication(log, dataSourceManager)
     }.start(wait = true)
 }
 
@@ -44,7 +47,7 @@ fun main(args: Array<String>) {
  * Method Serves the endpoints, including erroneous ones.
  * It also includes a 'health' endpoint that check the DB for its status.
  */
-fun Application.serverApplication(log: Logger, dataSource: DataSource) {
+fun Application.serverApplication(log: Logger, dataSourceManager: DataSourceManager) {
     install(StatusPages) {
         exception<Throwable> { call, cause ->
             log.error("Server Error", cause)
@@ -54,7 +57,7 @@ fun Application.serverApplication(log: Logger, dataSource: DataSource) {
             )
         }
     }
-    // Webapp defined routes
+    // Webapp defined routes - With example dummy responses
     routing {
         get(
             "/",
@@ -76,7 +79,7 @@ fun Application.serverApplication(log: Logger, dataSource: DataSource) {
         get(
             "/health",
             webResponse {
-                TextWebResponse(healthCheck(dataSource))
+                TextWebResponse(dataSourceManager.healthCheck())
                     .header("X-test-header", "test-value")
             }
         )
@@ -152,38 +155,4 @@ private fun logProperties(webAppConfig: WebAppConfigs) {
         .joinToString("\n")
 
     log.info("Loaded properties: $propertiesString")
-}
-
-private fun createAndMigrateDatasource(configs: WebAppConfigs): DataSource {
-    val dataSource = createDatasource(configs).also {
-        migrateDataSource(it)
-    }
-    return dataSource
-}
-
-/**
- * The following method setups the connection (and pool)
- */
-private fun createDatasource(configs: WebAppConfigs) =
-    HikariDataSource().apply {
-        jdbcUrl = configs.dbUrl
-        username = configs.dbUserName
-        password = configs.dbPassword
-    }
-
-private fun migrateDataSource(dataSource: DataSource) {
-    Flyway.configure()
-        .dataSource(dataSource)
-        .locations("db/migration")
-        .table("flyway_schema_history")
-        .load()
-        .migrate()
-}
-private fun healthCheck(dataSource: DataSource): String {
-    dataSource.connection.use { conn ->
-        conn.createStatement().use { stmt ->
-            stmt.executeQuery("SELECT 1")
-        }
-    }
-    return "DATABASE STATUS: OK"
 }
